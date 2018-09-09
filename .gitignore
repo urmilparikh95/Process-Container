@@ -12,3 +12,4 @@ library/libpcontainer.so.1.0
 benchmark/benchmark
 grade/benchmark
 .vscode
+sync.sh
