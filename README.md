@@ -106,8 +106,6 @@ gfp_t GFP_KERNEL;
 // functions
 printk(const char *fmt, ...);
 ```
-<<<<<<< c654d7a7f052c192c86497b82e8e42c1d8c9c2d5
-=======
 
 ## References and Hints
 1. This project is based on this paper: http://people.cs.uchicago.edu/~shanlu/teaching/33100_fa15/papers/rc-osdi99.pdf, you may need to read it to understand the high-level view of this project.
@@ -117,4 +115,3 @@ printk(const char *fmt, ...);
 3. You should try to figure out the interactions between user-space applications (e.g. benchmark) and the user-space library, the user-space library and the kernel module. You should especially understand how to context switch tasks in the user-space that the functionality is defined in pcontainer_init(), handler(), pcontainer_context_switch_handler() from the user-space library. And you also need to know how to wake up/pause tasks by using wake_up_process()/schedule()/set_current_state(), which are kernel-space functions. Here is the explanation of how to control the status of processes in Linux system: https://www.linuxjournal.com/article/8144
 
 4. You may need to reference the [Linux kernel programming guide](http://www.tldp.org/LDP/lkmpg/2.6/lkmpg.pdf) and [Linux Device Drivers, 3rd Edition](https://lwn.net/Kernel/LDD3/) since user-space libraries will not be available for kernel code.
->>>>>>> update README.md
