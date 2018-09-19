@@ -53,6 +53,7 @@
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
+    printk(KERN_INFO "Hello world 1.\n");
     return 0;
 }
 
