@@ -46,6 +46,9 @@
 
 extern struct miscdevice processor_container_dev;
 
+
+struct mutex container_mutex;
+
 /**
  * Initialize and register the kernel module
  */
@@ -56,6 +59,8 @@ int processor_container_init(void)
         printk(KERN_ERR "Unable to register \"processor_container\" misc device\n");
     else
         printk(KERN_ERR "\"processor_container\" misc device installed\n");
+        mutex_init(&container_mutex);
+        // printk(KERN_INFO "Hello world %lu..\n", sizeof(*container_list));
     return ret;
 }
 

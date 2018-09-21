@@ -45,6 +45,16 @@
 #include <linux/sched.h>
 #include <linux/kthread.h>
 
+struct container_list
+{
+    __u64 cid;
+    struct task_struct* base;
+    struct task_struct* cur;
+    struct container_list* next;
+};
+
+extern struct mutex container_mutex;
+
 /**
  * Delete the task in the container.
  * 
@@ -53,7 +63,10 @@
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
-    printk(KERN_INFO "Hello world 1.\n");
+    // struct processor_container_cmd *kernel_cmd;
+    // kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
+    // copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
+    // printk(KERN_INFO "Hello world %llu..\n", kernel_cmd->cid);
     return 0;
 }
 
@@ -67,6 +80,10 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_create(struct processor_container_cmd __user *user_cmd)
 {
+    struct processor_container_cmd *kernel_cmd;
+    kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
+    copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
+
     return 0;
 }
 
@@ -78,6 +95,10 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
+    // struct processor_container_cmd *kernel_cmd;
+    // kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
+    // copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
+    // printk(KERN_INFO "Hello world %llu..\n", kernel_cmd->cid);
     return 0;
 }
 
