@@ -48,12 +48,20 @@
 struct container_list
 {
     __u64 cid;
-    struct task_struct* base;
-    struct task_struct* cur;
+    struct thread_list* head;
+    struct thread_list* current;
     struct container_list* next;
 };
 
+struct thread_list
+{
+    struct task_struct* thread;
+    struct thread_list* next;
+};
+
 extern struct mutex container_mutex;
+
+struct container_list* h = NULL;
 
 /**
  * Delete the task in the container.
@@ -83,7 +91,42 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     struct processor_container_cmd *kernel_cmd;
     kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
     copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
-
+    struct thread_list* temp_thread = (struct thread_list*)kmalloc(sizeof(struct thread_list), GFP_KERNEL);
+    temp_thread->thread = current;
+    temp_thread->next = NULL;
+    if(h == NULL)
+    {
+        struct container_list* temp_container = (struct container_list*)kmalloc(sizeof(struct container_list), GFP_KERNEL);
+        temp_container->cid = kernel_cmd->cid;
+        temp_container->head = temp_thread;
+        temp_container->current = temp_container->head;
+        temp_container->next = NULL;
+        h = temp_container;
+    }
+    else
+    {
+        int flag = 0;
+        struct container_list* c = h;
+        while(c != NULL)
+        {
+            if(c->cid == kernel_cmd->cid)
+            {
+                /// 1 head always present
+                flag = 1;
+                break;
+            }
+            c = c->next;
+        }
+        if(flag == 0)
+        {
+            struct container_list* temp_container = (struct container_list*)kmalloc(sizeof(struct container_list), GFP_KERNEL);
+            temp_container->cid = kernel_cmd->cid;
+            temp_container->head = temp_thread;
+            temp_container->current = temp_container->head;
+            temp_container->next = NULL;
+            c = temp_container;
+        }
+    }
     return 0;
 }
 
