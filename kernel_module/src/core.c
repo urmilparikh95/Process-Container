@@ -44,9 +44,23 @@
 #include <linux/mutex.h>
 #include <linux/sched.h>
 
+struct container_list
+{
+    __u64 cid;
+    struct thread_list* head;
+    struct thread_list* cur;
+    struct container_list* next;
+};
+
+struct thread_list
+{
+    struct task_struct* thread;
+    struct thread_list* next;
+};
+
 extern struct miscdevice processor_container_dev;
 
-
+struct container_list* start;
 struct mutex container_mutex;
 
 /**
@@ -60,6 +74,7 @@ int processor_container_init(void)
     else
         printk(KERN_ERR "\"processor_container\" misc device installed\n");
         mutex_init(&container_mutex);
+        start = NULL;
         // printk(KERN_INFO "Hello world %lu..\n", sizeof(*container_list));
     return ret;
 }

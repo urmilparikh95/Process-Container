@@ -49,7 +49,7 @@ struct container_list
 {
     __u64 cid;
     struct thread_list* head;
-    struct thread_list* current;
+    struct thread_list* cur;
     struct container_list* next;
 };
 
@@ -60,8 +60,7 @@ struct thread_list
 };
 
 extern struct mutex container_mutex;
-
-struct container_list* h = NULL;
+extern struct container_list* start;
 
 /**
  * Delete the task in the container.
@@ -71,10 +70,92 @@ struct container_list* h = NULL;
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
+    // mutex_lock(&container_mutex);
+    // printk(KERN_INFO "final pid = %d cid = %llu..\n", start->head->thread->pid, start->cid);
+    // printk(KERN_INFO "final pid = %d cid = %llu..\n", start->head->next->thread->pid, start->cid);
+    // printk(KERN_INFO "final pid = %d cid = %llu..\n", start->head->next->next->thread->pid, start->cid);
+    // printk(KERN_INFO "final pid = %d cid = %llu..\n", start->next->head->thread->pid, start->next->cid);
+    // printk(KERN_INFO "final pid = %d cid = %llu..\n", start->next->head->next->thread->pid, start->next->cid);
+    // mutex_unlock(&container_mutex);
     // struct processor_container_cmd *kernel_cmd;
     // kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
     // copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
     // printk(KERN_INFO "Hello world %llu..\n", kernel_cmd->cid);
+
+    // mutex_lock(&container_mutex);
+    // struct container_list* temp_container = start;
+    // struct thread_list* temp_thread;
+    // while(temp_container != NULL)
+    // {
+    //     printk(KERN_INFO "\ncid = %llu..\n",temp_container->cid);
+    //     temp_thread = temp_container->head;
+    //     while(temp_thread != NULL)
+    //     {
+    //         printk(KERN_INFO "\npid = %d..\n",temp_thread->thread->pid);
+    //         temp_thread = temp_thread->next;
+    //     }
+    //     temp_container = temp_container->next;
+    // }
+    // mutex_unlock(&container_mutex);
+
+    // printk(KERN_INFO "fpid = %d..\n",current->pid);
+    // mutex_lock(&container_mutex);
+    // struct task_struct* ttt = start->head->next->thread;
+    // wake_up_process(ttt);
+    // mutex_unlock(&container_mutex);
+
+    // printk(KERN_INFO "kpid = %d..\n",current->pid);
+    struct container_list* temp_container = start;
+    struct container_list* prev_container = NULL;
+    mutex_lock(&container_mutex);
+    while(temp_container != NULL)
+    {
+        if(current->pid == temp_container->cur->thread->pid)
+        {
+            if(temp_container->cur == temp_container->head && temp_container->head->next == NULL)
+            {
+                if(prev_container == NULL)
+                {
+                    start = start->next;
+                }
+                else
+                {
+                    prev_container->next = temp_container->next;
+                }
+                kfree(temp_container->head);
+                kfree(temp_container);
+            }
+            else if(temp_container->cur == temp_container->head)
+            {
+                struct thread_list* temp_thread = temp_container->head;
+                temp_container->head = temp_thread->next;
+                temp_container->cur = temp_container->head;
+                kfree(temp_thread);
+                wake_up_process(temp_container->cur->thread);
+            }
+            else
+            {
+                struct thread_list* temp_thread = temp_container->head;
+                while(temp_thread->next != temp_container->cur)
+                {
+                    temp_thread = temp_thread->next;
+                }
+                temp_thread->next = temp_container->cur->next;
+                temp_thread = temp_container->cur;
+                temp_container->cur = temp_thread->next;
+                if(temp_container->cur == NULL)
+                {
+                    temp_container->cur = temp_container->head;
+                }
+                kfree(temp_thread);
+                wake_up_process(temp_container->cur->thread);
+            }
+            break;
+        }
+        prev_container = temp_container;
+        temp_container = temp_container->next;
+    }
+    mutex_unlock(&container_mutex);
     return 0;
 }
 
@@ -88,31 +169,45 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_create(struct processor_container_cmd __user *user_cmd)
 {
-    struct processor_container_cmd *kernel_cmd;
-    kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
-    copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
     struct thread_list* temp_thread = (struct thread_list*)kmalloc(sizeof(struct thread_list), GFP_KERNEL);
+    struct processor_container_cmd *kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
+
     temp_thread->thread = current;
     temp_thread->next = NULL;
-    if(h == NULL)
+
+    copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
+
+    mutex_lock(&container_mutex);
+    // printk(KERN_INFO "pid = %d..\n",current->pid);
+    if(start == NULL)
     {
         struct container_list* temp_container = (struct container_list*)kmalloc(sizeof(struct container_list), GFP_KERNEL);
         temp_container->cid = kernel_cmd->cid;
         temp_container->head = temp_thread;
-        temp_container->current = temp_container->head;
+        temp_container->cur = temp_container->head;
         temp_container->next = NULL;
-        h = temp_container;
+        start = temp_container;
     }
     else
     {
         int flag = 0;
-        struct container_list* c = h;
+        struct container_list* c = start;
         while(c != NULL)
         {
             if(c->cid == kernel_cmd->cid)
             {
-                /// 1 head always present
+                struct thread_list* temp2 = c->head;
                 flag = 1;
+                while(temp2->next != NULL)
+                {
+                    temp2 = temp2->next;
+                }
+                temp2->next = temp_thread;
+                // printk(KERN_INFO "lpid = %d..\n",current->pid);
+                mutex_unlock(&container_mutex);
+                set_current_state(TASK_INTERRUPTIBLE);
+                schedule();
+                mutex_lock(&container_mutex);
                 break;
             }
             c = c->next;
@@ -122,11 +217,17 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
             struct container_list* temp_container = (struct container_list*)kmalloc(sizeof(struct container_list), GFP_KERNEL);
             temp_container->cid = kernel_cmd->cid;
             temp_container->head = temp_thread;
-            temp_container->current = temp_container->head;
+            temp_container->cur = temp_container->head;
             temp_container->next = NULL;
-            c = temp_container;
+            c = start;
+            while(c->next != NULL)
+            {
+                c = c->next;
+            }
+            c->next = temp_container;
         }
     }
+    mutex_unlock(&container_mutex);
     return 0;
 }
 
@@ -138,10 +239,29 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
-    // struct processor_container_cmd *kernel_cmd;
-    // kernel_cmd = kmalloc(sizeof(*user_cmd), GFP_KERNEL);
-    // copy_from_user(kernel_cmd, user_cmd, sizeof(*user_cmd));
-    // printk(KERN_INFO "Hello world %llu..\n", kernel_cmd->cid);
+    // printk(KERN_INFO "spid = %d..\n",current->pid);
+    struct container_list* temp_container = start;
+    mutex_lock(&container_mutex);
+    while(temp_container != NULL)
+    {
+        if(current->pid == temp_container->cur->thread->pid && temp_container->head->next != NULL)
+        {
+            struct thread_list* temp_thread = temp_container->cur->next;
+            if(temp_thread == NULL)
+            {
+                temp_thread = temp_container->head;
+            }
+            temp_container->cur = temp_thread;
+            wake_up_process(temp_container->cur->thread);
+            mutex_unlock(&container_mutex);
+            set_current_state(TASK_INTERRUPTIBLE);
+            schedule();
+            mutex_lock(&container_mutex);
+            break;
+        }
+        temp_container = temp_container->next;
+    }
+    mutex_unlock(&container_mutex);
     return 0;
 }
 
